@@ -1,0 +1,23 @@
+###############################################################################
+# CS2 LAN Tournament Orchestrator - Docker Compose (Image Build Only)
+# ============================================================================
+# This compose file exists solely to build the cs2-server image. It does NOT
+# define any server services — those are managed dynamically by the
+# cs2-server-manager.sh script, which uses `docker run` to spin up containers
+# on demand with per-slot port assignments, memory limits, and volume mounts.
+#
+# Usage:
+#   docker compose build          # Build the image
+#   ./cs2-server-manager.sh ...   # Start/stop/manage servers
+#
+# Persistent data services (the WeaponPaints MySQL backing store, etc.) are
+# defined in docker-compose.platform.yml and intended to run alongside
+# Postgres on the platform host (192.168.10.221), not on the game host.
+###############################################################################
+
+services:
+  cs2-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cs2-server-latest

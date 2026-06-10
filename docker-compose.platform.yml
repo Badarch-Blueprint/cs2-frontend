@@ -1,0 +1,59 @@
+###############################################################################
+# CS2 LAN Tournament Orchestrator - Platform-side Persistent Services
+# ============================================================================
+# This compose file is intended to run on the *platform host* (the same box
+# that hosts the Postgres `cs2tournament` DB and the NestJS backend, e.g.
+# 192.168.10.221), NOT on the game host that runs the CS2 dedicated servers.
+#
+# Why a separate file:
+#   - The game host stays stateless: when a slot dies the container is
+#     thrown away and rebuilt from /opt/cs2/shared.
+#   - All persistent data (Postgres + WeaponPaints MySQL) lives on one host
+#     so backups, firewall rules and access control are unified.
+#   - Your NestJS backend can talk to MySQL on localhost instead of crossing
+#     the LAN to the game host.
+#
+# Usage (on the platform host):
+#   docker compose -f docker-compose.platform.yml up -d
+#
+# Credentials are read from environment variables / a local .env file:
+#   WP_MYSQL_ROOT_PASSWORD
+#   WP_MYSQL_DATABASE   (default: weaponpaints)
+#   WP_MYSQL_USER       (default: weaponpaints)
+#   WP_MYSQL_PASSWORD
+#
+# The MySQL port is exposed on 0.0.0.0:3306 so the LAN-resident game host
+# can reach it. Tighten this with a firewall rule (ufw / nftables) so only
+# the game host's IP can connect:
+#   sudo ufw allow from <GAME_HOST_IP> to any port 3306 proto tcp
+###############################################################################
+
+services:
+  weaponpaints-mysql:
+    image: mysql:8.0
+    container_name: weaponpaints-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${WP_MYSQL_ROOT_PASSWORD:?Set WP_MYSQL_ROOT_PASSWORD in .env (see .env.example)}
+      MYSQL_DATABASE: ${WP_MYSQL_DATABASE:-weaponpaints}
+      MYSQL_USER: ${WP_MYSQL_USER:-weaponpaints}
+      MYSQL_PASSWORD: ${WP_MYSQL_PASSWORD:?Set WP_MYSQL_PASSWORD in .env (see .env.example)}
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+    volumes:
+      - weaponpaints_mysql_data:/var/lib/mysql
+    ports:
+      # 0.0.0.0 so the CS2 game host can reach it across the LAN.
+      # Lock the source IP down with a host firewall rule.
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  weaponpaints_mysql_data:
+    driver: local

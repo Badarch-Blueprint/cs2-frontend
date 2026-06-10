@@ -1,0 +1,8 @@
+ssh badarch@192.168.10.63 "curl -X POST http://127.0.0.1:32500/events/a362fbba-d02e-4a41-ac77-f2aaaa60f06f \
+  -H 'Content-Type: application/json' \
+  -H 'Accept-Charset: utf-8' \
+  -d '{
+    \"event\": \"map_result\",
+    \"team1\": {\"name\": \"Блюпринт\", \"score\": 13},
+    \"team2\": {\"name\": \"Нитро\", \"score\": 10}
+  }'"
